@@ -11,6 +11,7 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -57,6 +58,7 @@ public class Client {
 	private int amMem;
 	private int amVCores;
 	private String amJar;
+	private String containerJar;
 	private int numContainers;
 	private int containerMem;
 	private int containerVCores;
@@ -110,7 +112,8 @@ public class Client {
 		opts.addOption("timeout", true, "Application timeout in ms");
 		opts.addOption("master_mem", true, "Memory to request for application master");
 		opts.addOption("master_vcores", true, "Virtual cores to request for application master");
-		opts.addOption("jar", true, "Application master jar");
+		opts.addOption("am_jar", true, "Application master jar");
+		opts.addOption("container_jar", true, "Container jar");
 		opts.addOption("num_containers", true, "Number of containers to request to run application");
 		opts.addOption("container_mem", true, "Memory to request for containers");
 		opts.addOption("container_vcores", true, "Virtual cores to request containers");
@@ -146,10 +149,8 @@ public class Client {
 			throw new IllegalArgumentException("Invalid value " + amVCores + " specified for master_vcores");
 		}
 
-		if (!cliParser.hasOption("jar")) {
-			throw new IllegalArgumentException("Application master jar not specified");
-		}
-		amJar = cliParser.getOptionValue("jar");
+		amJar = cliParser.getOptionValue("am_jar");
+		containerJar = cliParser.getOptionValue("container_jar");
 
 		numContainers = Integer.parseInt(cliParser.getOptionValue("num_containers", "1"));
 		containerMem = Integer.parseInt(cliParser.getOptionValue("container_mem", "10"));
@@ -215,7 +216,10 @@ public class Client {
 		Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
 
 		// add application master jar to resource
-		ResourceUtils.addLocalResource(fs, amJar, "AppMaster.jar", appName, appId.toString(), localResources);
+		ResourceUtils.addLocalResource(fs, amJar, FilenameUtils.getName(amJar), appName, appId.toString(),
+				localResources);
+		ResourceUtils.addLocalResource(fs, containerJar, FilenameUtils.getName(containerJar), appName,
+				appId.toString(), localResources);
 
 		// specify local resource on container
 		appContainer.setLocalResources(localResources);
@@ -244,8 +248,9 @@ public class Client {
 		vargs.add(Environment.JAVA_HOME.$$() + "/bin/java");
 		vargs.add("-Xmx" + amMem + "m");
 		// set classname
-		vargs.add("com.adeel.tests.yarnmailer.ApplicationMaster");
+		vargs.add("com.adeel.tests.yarnmailer.AM");
 		// pass container params
+		vargs.add("--container_jar " + containerJar);
 		vargs.add("--num_containers " + String.valueOf(numContainers));
 		vargs.add("--container_mem " + String.valueOf(containerMem));
 		vargs.add("--container_vcores " + String.valueOf(containerVCores));
