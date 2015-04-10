@@ -549,12 +549,12 @@ public class ApplicationMaster {
 			Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
 
 			try {
-				//add containers jar to local resources
+				// add containers jar to local resources
 				ResourceUtils.addLocalResource(fs, containerJarPath, localResources);
 			} catch (IOException e) {
 				log.error("error in adding containers jar as local resource", e);
 			}
-			
+
 			// set local resources on launch context
 			context.setLocalResources(localResources);
 
